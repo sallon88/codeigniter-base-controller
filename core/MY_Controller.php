@@ -18,7 +18,7 @@ class MY_Controller extends CI_Controller
      * The current request's view. Automatically guessed
      * from the name of the controller and action
      */
-    protected $view = '';
+    protected $view = TRUE;
 
     /**
      * An array of variables to be passed through to the
@@ -29,7 +29,7 @@ class MY_Controller extends CI_Controller
     /**
      * The name of the layout to wrap around the view.
      */
-    protected $layout;
+    protected $layout = TRUE;
 
     /**
      * An arbitrary list of asides/partials to be loaded into
@@ -53,6 +53,9 @@ class MY_Controller extends CI_Controller
      */
     protected $helpers = array();
 
+	protected $before_filters = array();
+	protected $after_filters = array();
+
     /* --------------------------------------------------------------
      * GENERIC METHODS
      * ------------------------------------------------------------ */
@@ -64,6 +67,14 @@ class MY_Controller extends CI_Controller
     public function __construct()
     {
         parent::__construct();
+
+		$this->load->helper('inflector');
+
+		$model = strtolower(singular(get_class($this)));
+		if (file_exists(APPPATH . 'models/' . $this->_model_name($model) .'.php'))
+		{
+			$this->models[] = $model;
+		}
 
         $this->_load_models();
         $this->_load_helpers();
@@ -78,11 +89,13 @@ class MY_Controller extends CI_Controller
      * through to the appropriate action. Support custom 404 methods and
      * autoload the view into the layout.
      */
-    public function _remap($method)
+    public function _remap($method, $parameters)
     {
         if (method_exists($this, $method))
         {
-            call_user_func_array(array($this, $method), array_slice($this->uri->rsegments, 2));
+			$this->_run_filters('before', $method, $parameters);
+			call_user_func_array(array($this, $method), $parameters);
+			$this->_run_filters('after', $method, $parameters);
         }
         else
         {
@@ -109,7 +122,7 @@ class MY_Controller extends CI_Controller
         if ($this->view !== FALSE)
         {
             // If $this->view isn't empty, load it. If it isn't, try and guess based on the controller and action name
-            $view = (!empty($this->view)) ? $this->view : $this->router->directory . $this->router->class . '/' . $this->router->method;
+            $view = ( ! empty($this->view)) ? $this->view : $this->router->directory . $this->router->class . '/' . $this->router->method;
 
             // Load the view into $yield
             $data['yield'] = $this->load->view($view, $this->data, TRUE);
@@ -125,38 +138,29 @@ class MY_Controller extends CI_Controller
 
             // Load in our existing data with the asides and view
             $data = array_merge($this->data, $data);
-            $layout = FALSE;
 
             // If we didn't specify the layout, try to guess it
-            if (!isset($this->layout))
-            {
-                if (file_exists(APPPATH . 'views/layouts/' . $this->router->class . '.php'))
-                {
-                    $layout = 'layouts/' . $this->router->class;
-                }
-                else
-                {
-                    $layout = 'layouts/application';
-                }
-            }
+			if ($this->layout !== FALSE)
+			{
+				if (is_string($this->layout) && ! empty($this->layout))
+				{
+					$layout = $this->layout;
+				}
+				elseif (file_exists(APPPATH . 'views/layouts/' . $this->router->class . '.php'))
+				{
+					$layout = $this->router->class;
+				}
+				else
+				{
+					$layout = 'application';
+				}
 
-            // If we did, use it
-            else if ($this->layout !== FALSE)
-            {
-                $layout = $this->layout;
-            }
-
-            // If $layout is FALSE, we're not interested in loading a layout, so output the view directly
-            if ($layout == FALSE)
-            {
+                $this->load->view('layouts/' . $layout, $data);
+			}
+			else
+			{
                 $this->output->set_output($data['yield']);
-            }
-
-            // Otherwise? Load away :)
-            else
-            {
-                $this->load->view($layout, $data);
-            }
+			}
         }
     }
 
@@ -198,4 +202,25 @@ class MY_Controller extends CI_Controller
             $this->load->helper($helper);
         }
     }
+
+	protected function _run_filters($what, $action, $parameters)
+	{
+		$what = $what . '_filters';
+
+		foreach ($this->$what as $filter => $details)
+		{
+			if (is_string($details))
+			{
+				$this->$details($action, $parameters);
+			}
+			elseif (is_array($details))
+			{
+				if (in_array($action, @$details['only'])
+				|| ! in_array($action, @$details['except']))
+				{
+					$this->$filter($action, $parameters);
+				}
+			}
+		}
+	}
 }
