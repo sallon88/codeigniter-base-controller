@@ -18,7 +18,7 @@ class MY_Controller extends CI_Controller
      * The current request's view. Automatically guessed
      * from the name of the controller and action
      */
-    protected $view = TRUE;
+    protected $view = '';
 
     /**
      * An array of variables to be passed through to the
@@ -29,7 +29,7 @@ class MY_Controller extends CI_Controller
     /**
      * The name of the layout to wrap around the view.
      */
-    protected $layout = TRUE;
+    protected $layout = '';
 
     /**
      * An arbitrary list of asides/partials to be loaded into
@@ -119,49 +119,51 @@ class MY_Controller extends CI_Controller
     protected function _load_view()
     {
         // If $this->view == FALSE, we don't want to load anything
-        if ($this->view !== FALSE)
-        {
-            // If $this->view isn't empty, load it. If it isn't, try and guess based on the controller and action name
-            $view = ( ! empty($this->view)) ? $this->view : $this->router->directory . $this->router->class . '/' . $this->router->method;
+		if ($this->view === FALSE)
+		{
+			return;
+		}
+		
+		// If $this->view isn't empty, load it. If it isn't, try and guess based on the controller and action name
+		$view = ( ! empty($this->view)) ? $this->view : $this->router->directory . $this->router->class . '/' . $this->router->method;
 
-            // Load the view into $yield
-            $data['yield'] = $this->load->view($view, $this->data, TRUE);
+		// Load the view into $yield
+		$data['yield'] = $this->load->view($view, $this->data, TRUE);
 
-            // Do we have any asides? Load them.
-            if (!empty($this->asides))
-            {
-                foreach ($this->asides as $name => $file)
-                {
-                    $data['yield_'.$name] = $this->load->view($file, $this->data, TRUE);
-                }
-            }
-
-            // Load in our existing data with the asides and view
-            $data = array_merge($this->data, $data);
-
-            // If we didn't specify the layout, try to guess it
-			if ($this->layout !== FALSE)
+		// Do we have any asides? Load them.
+		if (!empty($this->asides))
+		{
+			foreach ($this->asides as $name => $file)
 			{
-				if (is_string($this->layout) && ! empty($this->layout))
-				{
-					$layout = $this->layout;
-				}
-				elseif (file_exists(APPPATH . 'views/layouts/' . $this->router->class . '.php'))
-				{
-					$layout = $this->router->class;
-				}
-				else
-				{
-					$layout = 'application';
-				}
+				$data['yield_'.$name] = $this->load->view($file, $this->data, TRUE);
+			}
+		}
 
-                $this->load->view('layouts/' . $layout, $data);
+		// Load in our existing data with the asides and view
+		$data = array_merge($this->data, $data);
+
+		// If we didn't specify the layout, try to guess it
+		if ($this->layout !== FALSE)
+		{
+			if (is_string($this->layout) && ! empty($this->layout))
+			{
+				$layout = $this->layout;
+			}
+			elseif (file_exists(APPPATH . 'views/layouts/' . $this->router->class . '.php'))
+			{
+				$layout = $this->router->class;
 			}
 			else
 			{
-                $this->output->set_output($data['yield']);
+				$layout = 'application';
 			}
-        }
+
+			$this->load->view('layouts/' . $layout, $data);
+		}
+		else
+		{
+			$this->output->set_output($data['yield']);
+		}
     }
 
     /* --------------------------------------------------------------
