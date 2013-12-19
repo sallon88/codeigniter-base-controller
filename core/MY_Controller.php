@@ -37,48 +37,8 @@ class MY_Controller extends CI_Controller
      */
     protected $asides = array();
 
-    /**
-     * A list of models to be autoloaded
-     */
-    protected $models = array();
-
-    /**
-     * A formatting string for the model autoloading feature.
-     * The percent symbol (%) will be replaced with the model name.
-     */
-    protected $model_string = '%_model';
-
-    /**
-     * A list of helpers to be autoloaded
-     */
-    protected $helpers = array();
-
 	protected $before_filters = array();
 	protected $after_filters = array();
-
-    /* --------------------------------------------------------------
-     * GENERIC METHODS
-     * ------------------------------------------------------------ */
-
-    /**
-     * Initialise the controller, tie into the CodeIgniter superobject
-     * and try to autoload the models and helpers
-     */
-    public function __construct()
-    {
-        parent::__construct();
-
-		$this->load->helper('inflector');
-
-		$model = strtolower(singular(get_class($this)));
-		if (file_exists(APPPATH . 'models/' . $this->_model_name($model) .'.php'))
-		{
-			$this->models[] = $model;
-		}
-
-        $this->_load_models();
-        $this->_load_helpers();
-    }
 
     /* --------------------------------------------------------------
      * VIEW RENDERING
@@ -164,45 +124,6 @@ class MY_Controller extends CI_Controller
 		{
 			$this->output->set_output($data['yield']);
 		}
-    }
-
-    /* --------------------------------------------------------------
-     * MODEL LOADING
-     * ------------------------------------------------------------ */
-
-    /**
-     * Load models based on the $this->models array
-     */
-    private function _load_models()
-    {
-        foreach ($this->models as $model)
-        {
-            $this->load->model($this->_model_name($model), $model);
-        }
-    }
-
-    /**
-     * Returns the loadable model name based on
-     * the model formatting string
-     */
-    protected function _model_name($model)
-    {
-        return str_replace('%', $model, $this->model_string);
-    }
-
-    /* --------------------------------------------------------------
-     * HELPER LOADING
-     * ------------------------------------------------------------ */
-
-    /**
-     * Load helpers based on the $this->helpers array
-     */
-    private function _load_helpers()
-    {
-        foreach ($this->helpers as $helper)
-        {
-            $this->load->helper($helper);
-        }
     }
 
 	protected function _run_filters($what, $action, $parameters)
